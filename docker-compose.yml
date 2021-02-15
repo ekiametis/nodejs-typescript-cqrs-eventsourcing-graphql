@@ -1,0 +1,62 @@
+version: '3'
+
+networks: 
+  my_stack_network:
+    driver: bridge
+    ipam:
+      driver: default
+
+services:
+
+  api:
+    build: .
+    deploy:
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - redis-event-store
+      - redis-read-store
+      - mongo-read-store
+      - event-bus
+    networks:
+      - my_stack_network
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      RABBIT_MQ_HOST: amqp://admin:admin@event-bus
+      REDIS_EVENT_STORE_HOST: redis-event-store
+      REDIS_EVENT_STORE_PORT: 6379
+      REDIS_EVENT_STORE_PASSWORD: RedisEventStore2021!
+      REDIS_READ_STORE_HOST: redis-read-store
+      REDIS_READ_STORE_PORT: 6379
+      REDIS_READ_STORE_PASSWORD: RedisReadStore2021!
+      MONGODB_READ_STORE_URL_CONNECTION : mongodb://mongo-read-store:27017/read-store
+
+  redis-event-store:
+    image: redis
+    container_name: redis-event-store
+    networks:
+      - my_stack_network
+    command: redis-server --requirepass RedisEventStore2021!
+
+  redis-read-store:
+    image: redis
+    container_name: redis-read-store
+    networks:
+      - my_stack_network
+    command: redis-server --requirepass RedisReadStore2021!
+
+  mongo-read-store:
+    image: mongo:4.1
+    networks:
+        - my_stack_network
+
+  event-bus:
+    image: rabbitmq:3-management
+    container_name: event-bus
+    networks:
+      - my_stack_network
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
